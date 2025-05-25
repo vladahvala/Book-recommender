@@ -7,10 +7,18 @@ from PyQt5.QtWidgets import (
 )
 
 from book_components import BookComposite, BookLeaf  # переконайся, що ці класи коректні
+from observer import BookNotifier, UserKeywordSubscriber
+
 
 class BookRecommender(QWidget):
     def __init__(self):
         super().__init__()
+
+        # Створюємо об’єкт BookNotifier і підписника
+        self.notifier = BookNotifier()
+        self.keyword_subscriber = UserKeywordSubscriber()
+        self.notifier.subscribe(self.keyword_subscriber)
+
         self.init_ui()
 
     def init_ui(self):
@@ -20,7 +28,7 @@ class BookRecommender(QWidget):
         self.layout = QVBoxLayout(self)
 
         self.heading = QLabel("BOOK RECOMMENDATION", self)
-        self.heading.setStyleSheet("font: 30px bold; color: white;")
+        self.heading.setStyleSheet("font: 30px bold; color: red;")
         self.heading.setAlignment(Qt.AlignCenter)
 
         self.search_box = QLineEdit(self)
@@ -44,6 +52,18 @@ class BookRecommender(QWidget):
         self.grouping_box.addItem("Group by Author")
         self.grouping_box.currentIndexChanged.connect(self.search)
 
+        # --- Нові елементи для підписки на ключові слова ---
+        self.keyword_input = QLineEdit(self)
+        self.keyword_input.setPlaceholderText("Enter keyword to subscribe")
+        self.keyword_input.setStyleSheet("font: 16px; background-color: white;")
+
+        self.subscribe_button = QPushButton("Subscribe Keyword", self)
+        self.subscribe_button.clicked.connect(self.add_keyword_subscription)
+
+        self.keywords_label = QLabel("Subscribed keywords: None", self)
+        self.keywords_label.setStyleSheet("color: blue; font: 14px;")
+        # -------------------------------------------------------
+
         self.layout.addWidget(self.heading)
         self.layout.addWidget(self.search_box)
         self.layout.addWidget(self.search_button)
@@ -52,6 +72,11 @@ class BookRecommender(QWidget):
         self.layout.addWidget(QLabel("Group by:", self))
         self.layout.addWidget(self.grouping_box)
 
+        # Додаємо нові елементи для підписки
+        self.layout.addWidget(self.keyword_input)
+        self.layout.addWidget(self.subscribe_button)
+        self.layout.addWidget(self.keywords_label)
+
         self.results_layout = QVBoxLayout()
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
@@ -59,6 +84,14 @@ class BookRecommender(QWidget):
         self.results_widget.setLayout(self.results_layout)
         self.scroll_area.setWidget(self.results_widget)
         self.layout.addWidget(self.scroll_area)
+
+    def add_keyword_subscription(self):
+        keyword = self.keyword_input.text().strip()
+        if keyword:
+            self.keyword_subscriber.add_keyword(keyword)
+            keywords_list = ', '.join(sorted(self.keyword_subscriber.keywords))
+            self.keywords_label.setText(f"Subscribed keywords: {keywords_list}")
+            self.keyword_input.clear()
 
     def clear_results(self):
         while self.results_layout.count():
@@ -93,6 +126,9 @@ class BookRecommender(QWidget):
             image = info.get('imageLinks', {}).get('thumbnail', '')
             authors = info.get('authors', [])
 
+            # Викликаємо сповіщення підписників по заголовку книги
+            self.notifier.notify(title)
+
             leaf = BookLeaf(title, image, published_date, rating, authors)
 
             if group_mode == "Group by Year":
@@ -102,8 +138,6 @@ class BookRecommender(QWidget):
             elif group_mode == "Group by First Letter":
                 key = title[0].upper() if title and title[0].isalpha() else "#"
             elif group_mode == "Group by Author":
-                # Якщо авторів кілька, можна брати першого або створити групу для кожного, 
-                # але зазвичай беруть першого автора
                 key = authors[0] if authors else "Unknown Author"
             else:
                 key = None
@@ -131,10 +165,10 @@ class BookRecommender(QWidget):
                 )
 
 
-
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     window = BookRecommender()
     window.show()
     sys.exit(app.exec_())
+
