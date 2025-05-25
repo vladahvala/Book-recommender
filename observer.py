@@ -1,4 +1,4 @@
-# observer.py
+# Оbserver
 
 class Observer:
     def update(self, book):
