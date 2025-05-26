@@ -167,12 +167,13 @@ class BookRecommender(QWidget):
         """)
 
     def add_keyword_subscription(self):
-        keyword = self.keyword_input.text().strip()
+        keyword = self.keyword_input.text().strip().lower()
         if keyword:
             self.keyword_subscriber.add_keyword(keyword)
             keywords_list = ', '.join(sorted(self.keyword_subscriber.keywords))
             self.keywords_label.setText(f"Subscribed keywords: {keywords_list}")
             self.keyword_input.clear()
+
 
     def clear_results(self):
         while self.results_layout.count():
@@ -190,6 +191,7 @@ class BookRecommender(QWidget):
             show_rating=self.check_var2.isChecked()
         )
         self.history.save(memento)
+
 
     def restore_search_from_memento(self, memento):
         self.search_box.setText(memento.query)
